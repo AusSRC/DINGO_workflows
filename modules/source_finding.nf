@@ -184,7 +184,7 @@ process update_gama_validate_config {
         val cont_file
 
     output:
-        val "${VALIDATE_CONFIG_FILE}", emit: validate_config
+        val "${params.WORKDIR}/${params.RUN_SUBDIR}/${params.RUN_NAME}/validate.ini", emit: validate_config
 
     shell:
         """
@@ -210,10 +210,10 @@ process update_gama_validate_config {
         result = j2_env.get_template('validate.j2').render(db_hostname=db_hostname, db_name=db_name, \
         db_username=db_user, db_password=db_pass, run_name=run_name, working_dir=work_dir, cont_file=cont_file)
 
-        with open('${params.VALIDATE_CONFIG_FILE}', 'w') as f:
+        with open('${params.WORKDIR}/${params.RUN_SUBDIR}/${params.RUN_NAME}/validate.ini', 'w') as f:
             print(result, file=f)
 
-        os.chmod('${params.VALIDATE_CONFIG_FILE}', 0o740)
+        os.chmod('${params.WORKDIR}/${params.RUN_SUBDIR}/${params.RUN_NAME}/validate.ini', 0o740)
         """
 }
 
@@ -255,8 +255,7 @@ workflow source_finding {
         gama_validate(update_gama_validate_config.out.validate_config)
         
     emit:
-        outputs = ""
-        //outputs = gama_validate.out.stdout
+        outputs = gama_validate.out.stdout
 }
 
 // ----------------------------------------------------------------------------------------
