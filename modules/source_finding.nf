@@ -54,6 +54,38 @@ process check_dependencies {
         """
 }
 
+process update_s2p_config {
+    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+
+    input:
+        val s2p_setup
+
+    output:
+        val "${params.SOFIA_PARAMETER_FILE}", emit: s2p_param_file
+
+    script:
+        """
+        #!python3
+
+        import os
+        import json
+        import configparser
+        from jinja2 import Environment, FileSystemLoader
+
+        catalog = '${params.SOFIA_CATALOG}'
+
+        j2_env = Environment(loader=FileSystemLoader('$baseDir/templates'), trim_blocks=True)
+        result = j2_env.get_template('sofia.j2').render(catalog=catalog)
+
+        with open('${params.SOFIA_PARAMETER_FILE}', 'w') as f:
+            print(result, file=f)
+
+        os.chmod('${params.SOFIA_PARAMETER_FILE}', 0o740)
+        """
+}
+
+
 // Create parameter files and config files for running SoFiA via SoFiAX
 process s2p_setup {
     container = params.S2P_SETUP_IMAGE
@@ -62,7 +94,7 @@ process s2p_setup {
     input:
         val image_cube
         val weights_cube
-        val check
+        val s2p_param_file
 
     output:
         stdout emit: stdout
@@ -76,7 +108,7 @@ process s2p_setup {
             --weights_cube $weights_cube \
             --region '${params.REGION}' \
             --run_name ${params.RUN_NAME} \
-            --sofia_template ${params.SOFIA_PARAMETER_FILE} \
+            --sofia_template $s2p_param_file \
             --output_dir ${params.WORKDIR}/${params.RUN_SUBDIR}/${params.RUN_NAME} \
             --products_dir ${params.WORKDIR}/${params.RUN_SUBDIR}/${params.RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}
         """
@@ -246,7 +278,8 @@ workflow source_finding {
 
     main:
         check_dependencies(image_cube, weights_cube, cont_file)
-        s2p_setup(image_cube, weights_cube, check_dependencies.out.stdout)
+        update_s2p_config(check_dependencies.out.stdout)
+        s2p_setup(image_cube, weights_cube, update_s2p_config.out.s2p_param_file)
         update_sofiax_config(s2p_setup.out.stdout)
         get_parameter_files(update_sofiax_config.out.sofiax_config)
         sofia(get_parameter_files.out.parameter_files.flatten())
