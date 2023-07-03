@@ -24,7 +24,6 @@ Workflows for Deep Investigation of Neutral Gas Origins (DINGO)
     DATABASE_USER = admin
     DATABASE_PASSWORD = admin
     ```
-</br>
 
 4. Pipeline paramater command line:
 
@@ -32,8 +31,6 @@ Workflows for Deep Investigation of Neutral Gas Origins (DINGO)
     * `IMAGE_CUBE`: Image data cube of a region
     * `WEIGHTS_CUBE`: Image cube weights
     * `CONT_FILE`: Continuum file of the same region as `IMAGE_CUBE`
-
-</br>
 
 5. Example running Source Finding:
 
