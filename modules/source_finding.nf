@@ -14,7 +14,7 @@ process check_dependencies {
         val cont_file
 
     output:
-        stdout emit: stdout
+        val true, emit: ready
 
     script:
         """
@@ -37,18 +37,6 @@ process check_dependencies {
         # Ensure s2p setup file exists
         [ ! -f ${params.S2P_TEMPLATE} ] && \
             { echo "Source finding s2p_setup template file (params.S2P_TEMPLATE) not found"; exit 1; }
-        
-        # Ensure image cube file exists
-        [ ! -f $image_cube ] && \
-            { echo "Source finding image cube (params.IMAGE_CUBE) not found"; exit 1; }
-        
-        # Ensure weights cube file exists
-        [ ! -f $weights_cube ] && \
-            { echo "Source finding weights cube (params.WEIGHTS_CUBE) not found"; exit 1; }
-
-        # Ensure weights cube file exists
-        [ ! -f $cont_file ] && \
-            { echo "Source finding weights cube (params.CONT_FILE) not found"; exit 1; }
 
         exit 0
         """
@@ -56,7 +44,7 @@ process check_dependencies {
 
 process update_s2p_config {
     container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         val s2p_setup
@@ -89,7 +77,7 @@ process update_s2p_config {
 // Create parameter files and config files for running SoFiA via SoFiAX
 process s2p_setup {
     container = params.S2P_SETUP_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         val image_cube
@@ -97,7 +85,7 @@ process s2p_setup {
         val s2p_param_file
 
     output:
-        stdout emit: stdout
+        val true, emit: ready
 
     script:
         """
@@ -117,7 +105,7 @@ process s2p_setup {
 // Update sofiax configuration file with run name
 process update_sofiax_config {
     container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         val s2p_setup
@@ -171,7 +159,7 @@ process get_parameter_files {
 // Run source finding application (sofia)
 process sofia {
     container = params.SOFIA_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         file parameter_file
@@ -191,13 +179,13 @@ process sofia {
 // Write sofia output to database (sofiax)
 process sofiax {
     container = params.SOFIAX_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         file parameter_file
 
     output:
-        stdout emit: stdout
+        val true, emit: ready
 
     script:
         """
@@ -252,12 +240,13 @@ process update_gama_validate_config {
 
 process gama_validate {
     container = params.GAMA_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         val config
 
     output:
-        stdout emit: stdout
+        val true, emit: ready
 
     shell:
         """
@@ -278,17 +267,17 @@ workflow source_finding {
 
     main:
         check_dependencies(image_cube, weights_cube, cont_file)
-        update_s2p_config(check_dependencies.out.stdout)
+        update_s2p_config(check_dependencies.out.ready)
         s2p_setup(image_cube, weights_cube, update_s2p_config.out.s2p_param_file)
-        update_sofiax_config(s2p_setup.out.stdout)
+        update_sofiax_config(s2p_setup.out.ready)
         get_parameter_files(update_sofiax_config.out.sofiax_config)
         sofia(get_parameter_files.out.parameter_files.flatten())
         sofiax(sofia.out.parameter_file.collect())
-        update_gama_validate_config(sofiax.out.stdout, cont_file)
+        update_gama_validate_config(sofiax.out.ready, cont_file)
         gama_validate(update_gama_validate_config.out.validate_config)
         
     emit:
-        outputs = gama_validate.out.stdout
+        outputs = gama_validate.out.ready
 }
 
 // ----------------------------------------------------------------------------------------
