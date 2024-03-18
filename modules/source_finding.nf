@@ -198,6 +198,7 @@ process sofiax {
 
 process update_gama_validate_config {
     container = params.UPDATE_SOFIAX_CONFIG_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
 
     input:
         val collect
