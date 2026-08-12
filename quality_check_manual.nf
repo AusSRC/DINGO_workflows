@@ -27,6 +27,7 @@ workflow dingo_quality {
             "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}",
             "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}/${params.WALLMERGE_OUTPUT}"
         )
+
         diagnostic_plot(
             source_finding.out.outputs,
             "${RUN_NAME}",
