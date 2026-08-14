@@ -20,10 +20,11 @@ process download_cube {
         val true, emit: ready
 
     script:
+        script_dir = "/software/projects/ja3/ashen/pipeline_components/casda_download"
         """
         #!/bin/bash
 
-        python3 -u /app/casda_download.py \
+        python3 -u ${script_dir}/casda_download.py \
             -s $sbid \
             -o $output_dir \
             -c ${params.CASDA_CREDENTIALS_CONFIG} \

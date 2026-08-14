@@ -24,15 +24,15 @@ workflow dingo_quality {
             source_finding.out.outputs,
             "${RUN_NAME}",
             "${params.DATABASE_ENV}",
-            "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}",
-            "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}/${params.WALLMERGE_OUTPUT}"
+            "${params.WORKDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}",
+            "${params.WORKDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}/${params.WALLMERGE_OUTPUT}"
         )
 
         diagnostic_plot(
             source_finding.out.outputs,
             "${RUN_NAME}",
-            "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}",
-            "${params.WORKDIR}/${params.RUN_SUBDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}/${params.DIAGNOSTIC_PLOT_FILENAME}",
+            "${params.WORKDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}",
+            "${params.WORKDIR}/${RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}/${params.DIAGNOSTIC_PLOT_FILENAME}",
             "${params.DATABASE_ENV}"
         )
 }
