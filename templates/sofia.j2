@@ -10,17 +10,17 @@ pipeline.threads           = 0
 # Input
 
 input.data                 =
-input.region               = 
-input.gain                 = 
-input.noise                = 
-input.weights              = 
-input.mask                 = 
+input.region               =
+input.gain                 =
+input.noise                =
+input.weights              =
+input.mask                 =
 input.invert               = false
 
 
 # Flagging
 
-flag.region                = 
+flag.region                =
 flag.catalog               = {{ catalog }}
 flag.radius                = 5
 flag.auto                  = true
@@ -51,13 +51,13 @@ scaleNoise.scfind          = false
 
 # Ripple filter
 
-rippleFilter.enable        =  true
-rippleFilter.statistic     =  median
-rippleFilter.windowXY      =  75
-rippleFilter.windowZ       =  75
-rippleFilter.gridXY        =  0
-rippleFilter.gridZ         =  0
-rippleFilter.interpolate   =  true
+background.enable          =  true
+background.statistic       =  median
+background.windowXY        =  75
+background.windowZ         =  75
+background.gridXY          =  0
+background.gridZ           =  0
+background.interpolate     =  true
 
 
 # S+C finder
@@ -88,7 +88,13 @@ linker.minSizeXY           = 5
 linker.minSizeZ            = 5
 linker.maxSizeXY           = 0
 linker.maxSizeZ            = 0
-linker.keepNegative        = false
+
+
+# Filter
+
+filter.discardNegative     = true
+filter.minSNR              = 3.0
+
 
 
 # Reliability
@@ -96,7 +102,6 @@ linker.keepNegative        = false
 reliability.enable         = true
 reliability.threshold      = 0.7
 reliability.scaleKernel    = 0.2
-reliability.minSNR         = 3.0
 reliability.plot           = true
 
 
@@ -111,7 +116,7 @@ parameter.offset           = false
 
 # Output
 
-output.directory           = 
+output.directory           =
 output.filename            = sofia_output
 output.writeCatASCII       = true
 output.writeCatXML         = true
@@ -123,6 +128,7 @@ output.writeMask2d         = true
 output.writeRawMask        = false
 output.writeMoments        = true
 output.writeCubelets       = true
-output.marginCubelets      = 10
+output.marginCubeletsXY    = 10
+output.marginCubeletsZ     = 10
 output.overwrite           = true
 output.writePV             = true
