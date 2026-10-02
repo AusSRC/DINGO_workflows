@@ -9,5 +9,5 @@ workflow {
     cont_file = "${params.CONT_FILE}"
 
     main:
-        source_finding(image_cube, weights_cube, cont_file)
+        source_finding(params.RUN_NAME, image_cube, weights_cube, cont_file)
 }
