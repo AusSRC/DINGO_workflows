@@ -43,8 +43,8 @@ process check_dependencies {
 }
 
 process update_s2p_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    container = params.AUSSRC_TOOLS_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val s2p_setup
@@ -77,7 +77,7 @@ process update_s2p_config {
 // Create parameter files and config files for running SoFiA via SoFiAX
 process s2p_setup {
     container = params.S2P_SETUP_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val image_cube
@@ -104,8 +104,8 @@ process s2p_setup {
 
 // Update sofiax configuration file with run name
 process update_sofiax_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    container = params.AUSSRC_TOOLS_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val ready
@@ -119,7 +119,7 @@ process update_sofiax_config {
         """
         #!/bin/bash
 
-        python3 -u /app/update_sofiax_config.py \
+        python3 -u -m aussrc_tools.source_finding.update_sofiax_config \
             --config ${params.SOFIAX_CONFIG_FILE} \
             --database ${params.DATABASE_ENV} \
             --output ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIAX_CONFIG_FILENAME} \
@@ -144,7 +144,7 @@ process get_parameter_files {
 // Run source finding application (sofia)
 process sofia {
     container = params.SOFIA_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         file parameter_file
@@ -164,7 +164,7 @@ process sofia {
 // Write sofia output to database (sofiax)
 process sofiax {
     container = params.SOFIAX_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         file parameter_file
@@ -182,8 +182,8 @@ process sofiax {
 }
 
 process update_gama_validate_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    container = params.AUSSRC_TOOLS_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val collect
@@ -226,7 +226,7 @@ process update_gama_validate_config {
 
 process gama_validate {
     container = params.GAMA_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val config

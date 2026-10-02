@@ -2,45 +2,15 @@
 
 nextflow.enable.dsl = 2
 
-// Download image cube and weights files
-process download_cube {
-    container = params.CASDA_DOWNLOAD_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},/home:/home"
+include { download } from '../pipeline_components/nextflow/modules/casda'
 
-    errorStrategy { sleep(Math.pow(2, task.attempt) * 200 as long); return 'retry' }
-    maxErrors 10
-
-    input:
-        val sbid
-        val output_dir
-        val ready
-        val project
-
-    output:
-        val true, emit: ready
-
-    script:
-        script_dir = "/software/projects/ja3/ashen/pipeline_components/casda_download"
-        """
-        #!/bin/bash
-
-        python3 -u ${script_dir}/casda_download.py \
-            -s $sbid \
-            -o $output_dir \
-            -c ${params.CASDA_CREDENTIALS_CONFIG} \
-            -p $project
-        """
-}
-
-
-// Get file from output directory
-process get_image_and_weights_cube_files {
+// Get image cube, weights cube and continuum image from the download manifest
+import groovy.json.JsonSlurper
+process parse_manifest {
     executor = 'local'
 
     input:
-        val sbid
-        val output_dir
-        val ready_cube
+        val manifest
 
     output:
         val image, emit: image
@@ -48,29 +18,56 @@ process get_image_and_weights_cube_files {
         val cont, emit: cont
 
     exec:
-        def sbid_text = "${sbid}"
-        def sb_num = sbid_text.minus("ASKAP-")
+        image = null
+        weight = null
+        cont = null
 
-        image = file("${output_dir}/image.restored*" + sb_num + "*cube*.fits")[0]
-        weight = file("${output_dir}/weight*" + sb_num + "*cube*.fits")[0]
-        cont = file("${output_dir}/image.i*" + sb_num + "*taylor.0*.fits")[0]
+        def files = new JsonSlurper().parseText(new File("$manifest").text)
+        files.each {
+            def filename = new File("$it").getName()
+            if (filename.matches('image\\.restored\\.i\\..*\\.cube\\.contsub\\.fits')) {
+                image = it
+            }
+            else if (filename.matches('weights\\.i\\..*\\.cube\\.fits')) {
+                weight = it
+            }
+            else if (filename.matches('image\\.i\\..*\\.0\\.restored\\.conv\\.fits')) {
+                cont = it
+            }
+        }
+
+        if (image == null) {
+            throw new Exception("image cube file is not found")
+        }
+
+        if (weight == null) {
+            throw new Exception("weights cube file is not found")
+        }
+
+        if (cont == null) {
+            throw new Exception("continuum image file is not found")
+        }
 }
 
 
+// Download image cube, weights cube and continuum image for a given SBID
 workflow casda_download {
     take:
         sbid
         output_dir
         ready
-        project
 
     main:
-        download_cube(sbid, output_dir, ready, project)
-        get_image_and_weights_cube_files(sbid, output_dir, download_cube.out.ready)
+        query = "SELECT * FROM ivoa.obscore WHERE obs_id IN ('${sbid}') AND " +
+                "(filename LIKE 'weights.i.%.cube.fits' OR " +
+                "filename LIKE 'image.restored.i.%.cube.contsub.fits' OR " +
+                "filename LIKE 'image.i.%.0.restored.conv.fits')"
+
+        download(ready.map { query }, output_dir, "${output_dir}/manifest.json")
+        parse_manifest(download.out.manifest)
 
     emit:
-        image = get_image_and_weights_cube_files.out.image
-        weight = get_image_and_weights_cube_files.out.weight
-        cont = get_image_and_weights_cube_files.out.cont
-
+        image = parse_manifest.out.image
+        weight = parse_manifest.out.weight
+        cont = parse_manifest.out.cont
 }
