@@ -9,7 +9,7 @@ include { run_sofia; run_sofiax } from '../pipeline_components/nextflow/modules/
 // ----------------------------------------------------------------------------------------
 
 process update_gama_validate_config {
-    container = params.AUSSRC_TOOLS_IMAGE
+    container = params.AUSSRC_PIPELINE_COMPONENTS_IMAGE
     containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:

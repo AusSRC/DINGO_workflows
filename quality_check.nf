@@ -6,9 +6,11 @@ include { download_containers } from './pipeline_components/nextflow/modules/sin
 include { casda_download } from './modules/casda_download'
 include { run_sofia } from './pipeline_components/nextflow/modules/sofia'
 include { moment0; diagnostic_plot } from './pipeline_components/nextflow/modules/outputs'
+include { create_run } from './pipeline_components/nextflow/modules/database'
 
 
-// Source finding, moment 0 map and diagnostic plot for an image cube. Output directories
+// Source finding, moment 0 map and diagnostic plot for an image cube, then create the run
+// in the database. Output directories
 //      <WORKDIR>/quality/<RUN_NAME>                    downloaded cubes
 //      <WORKDIR>/quality/<RUN_NAME>/sofia              parameter files
 //      <WORKDIR>/quality/<RUN_NAME>/sofia/output       sofia products, moment 0 map and plot
@@ -43,6 +45,11 @@ workflow dingo_quality {
             products_dir,
             "${products_dir}/diagnostics.pdf"
         )
+
+        create_run(
+            moment0.out.done.combine(diagnostic_plot.out.done),
+            RUN_NAME
+        )
 }
 
 // Run the quality check for either
@@ -58,7 +65,7 @@ workflow {
         }
 
         download_containers([
-            params.AUSSRC_TOOLS_IMAGE,
+            params.AUSSRC_PIPELINE_COMPONENTS_IMAGE,
             params.S2P_SETUP_IMAGE,
             params.SOFIA_IMAGE
         ])
