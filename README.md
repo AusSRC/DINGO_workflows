@@ -9,6 +9,20 @@ Workflows for Deep Investigation of Neutral Gas Origins (DINGO)
 * Singularity Module
 * mpich MPI Module
 
+# Setup
+
+Shared nextflow modules, config and container images come from the [pipeline_components](https://github.com/AusSRC/pipeline_components) repository, which is included as a git submodule. Clone with
+
+```
+git clone --recurse-submodules git@github.com:AusSRC/DINGO_workflows.git
+```
+
+or, in an existing clone
+
+```
+git submodule update --init
+```
+
 # Configuration
 
 1. Specify `WORKDIR` and `SCRATCH_ROOT` path in `nextflow.config`

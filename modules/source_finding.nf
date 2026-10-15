@@ -2,197 +2,27 @@
 
 nextflow.enable.dsl = 2
 
+include { run_sofia; run_sofiax } from '../pipeline_components/nextflow/modules/sofia'
+
 // ----------------------------------------------------------------------------------------
 // Processes
 // ----------------------------------------------------------------------------------------
 
-// Check dependencies for pipeline run
-process check_dependencies {
-    input:
-        val image_cube
-        val weights_cube
-        val cont_file
-
-    output:
-        val true, emit: ready
-
-    script:
-        """
-        #!/bin/bash
-
-        if [ -z "${params.RUN_NAME}" ]; then
-            { echo "(params.RUN_NAME) is empty"; exit 1; }
-        fi
-
-        # Ensure working directory exists
-        mkdir -p ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}
-
-        # Ensure sofia output directory exists
-        mkdir -p ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}
-
-        # Ensure parameter file exists
-        [ ! -f ${params.SOFIA_PARAMETER_FILE} ] && \
-            { echo "Source finding parameter file (params.SOFIA_PARAMETER_FILE) not found"; exit 1; }
-
-        # Ensure s2p setup file exists
-        [ ! -f ${params.S2P_TEMPLATE} ] && \
-            { echo "Source finding s2p_setup template file (params.S2P_TEMPLATE) not found"; exit 1; }
-
-        exit 0
-        """
-}
-
-process update_s2p_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
-
-    input:
-        val s2p_setup
-
-    output:
-        val "${params.SOFIA_PARAMETER_FILE}", emit: s2p_param_file
-
-    script:
-        """
-        #!python3
-
-        import os
-        import json
-        import configparser
-        from jinja2 import Environment, FileSystemLoader
-
-        catalog = '${params.SOFIA_CATALOG}'
-
-        j2_env = Environment(loader=FileSystemLoader('$baseDir/templates'), trim_blocks=True)
-        result = j2_env.get_template('sofia.j2').render(catalog=catalog)
-
-        with open('${params.SOFIA_PARAMETER_FILE}', 'w') as f:
-            print(result, file=f)
-
-        os.chmod('${params.SOFIA_PARAMETER_FILE}', 0o740)
-        """
-}
-
-
-// Create parameter files and config files for running SoFiA via SoFiAX
-process s2p_setup {
-    container = params.S2P_SETUP_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
-
-    input:
-        val image_cube
-        val weights_cube
-        val s2p_param_file
-
-    output:
-        val true, emit: ready
-
-    script:
-        """
-        #!/bin/bash
-        python3 -u /app/s2p_setup.py \
-            --config ${params.S2P_TEMPLATE} \
-            --image_cube $image_cube \
-            --weights_cube $weights_cube \
-            --region '${params.REGION}' \
-            --run_name ${params.RUN_NAME} \
-            --sofia_template $s2p_param_file \
-            --output_dir ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME} \
-            --products_dir ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIA_OUTPUTS_DIRNAME}
-        """
-}
-
-// Update sofiax configuration file with run name
-process update_sofiax_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+process update_gama_validate_config {
+    container = params.AUSSRC_PIPELINE_COMPONENTS_IMAGE
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val ready
-
-    output:
-        val sofiax_config, emit: sofiax_config
-
-    script:
-        sofiax_config = "${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIAX_CONFIG_FILENAME}"
-
-        """
-        #!/bin/bash
-
-        python3 -u /app/update_sofiax_config.py \
-            --config ${params.SOFIAX_CONFIG_FILE} \
-            --database ${params.DATABASE_ENV} \
-            --output ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIAX_CONFIG_FILENAME} \
-            --run_name ${params.RUN_NAME} \
-        """
-}
-
-// Fetch parameter files from the filesystem (dynamically)
-process get_parameter_files {
-    executor = 'local'
-
-    input:
-        val sofiax_config
-
-    output:
-        val parameter_files, emit: parameter_files
-
-    exec:
-        parameter_files = file("${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/sofia_*.par")
-}
-
-// Run source finding application (sofia)
-process sofia {
-    container = params.SOFIA_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
-
-    input:
-        file parameter_file
-
-    output:
-        path parameter_file, emit: parameter_file
-
-    script:
-        """
-        #!/bin/bash
-        if [ "${params.RUN_SOFIA}" -eq "1" ]; then
-            OMP_NUM_THREADS=8 sofia $parameter_file
-        fi
-        """
-}
-
-// Write sofia output to database (sofiax)
-process sofiax {
-    container = params.SOFIAX_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
-
-    input:
-        file parameter_file
-
-    output:
-        val true, emit: ready
-
-    script:
-        """
-        #!/bin/bash
-        if [ "${params.RUN_SOFIAX}" -eq "1" ]; then
-            python -m sofiax -c ${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/${params.SOFIAX_CONFIG_FILENAME} -p $parameter_file
-        fi
-        """
-}
-
-process update_gama_validate_config {
-    container = params.UPDATE_SOFIAX_CONFIG_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
-
-    input:
-        val collect
+        val run_name
         val cont_file
+        val output_dir
 
     output:
-        val "${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/validate.ini", emit: validate_config
+        val validate_config, emit: validate_config
 
-    shell:
+    script:
+        validate_config = "${output_dir}/validate.ini"
         """
         #!python3
 
@@ -208,7 +38,7 @@ process update_gama_validate_config {
         db_name = title['DATABASE_NAME']
         db_user = title['DATABASE_USER']
         db_pass = title['DATABASE_PASSWORD']
-        run_name = '${params.RUN_NAME}'
+        run_name = '$run_name'
         work_dir = '${params.VALIDATE_WORK_DIR}'
         cont_file = '$cont_file'
 
@@ -216,17 +46,17 @@ process update_gama_validate_config {
         result = j2_env.get_template('validate.j2').render(db_hostname=db_hostname, db_name=db_name, \
         db_username=db_user, db_password=db_pass, run_name=run_name, working_dir=work_dir, cont_file=cont_file)
 
-        with open('${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/validate.ini', 'w') as f:
+        with open('$validate_config', 'w') as f:
             print(result, file=f)
 
-        os.chmod('${params.WORKDIR}/${params.RUN_DIR}/${params.RUN_NAME}/validate.ini', 0o740)
+        os.chmod('$validate_config', 0o740)
         """
 }
 
 
 process gama_validate {
     container = params.GAMA_IMAGE
-    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT},${params.HOME_DIR}:${params.HOME_DIR}"
+    containerOptions = "--bind ${params.SCRATCH_ROOT}:${params.SCRATCH_ROOT} --bind \$HOME:\$HOME"
 
     input:
         val config
@@ -245,6 +75,10 @@ process gama_validate {
 // Workflow
 // ----------------------------------------------------------------------------------------
 
+// Source finding (sofia), write detections to the database (sofiax) and validate against GAMA.
+// Output directories
+//      <WORKDIR>/source_finding/<run_name>/sofia           parameter and config files
+//      <WORKDIR>/source_finding/<run_name>/sofia/output    sofia products
 workflow source_finding {
     take:
         run_name
@@ -253,37 +87,26 @@ workflow source_finding {
         cont_file
 
     main:
-        check_dependencies(image_cube, weights_cube, cont_file)
-        update_s2p_config(check_dependencies.out.ready)
-        s2p_setup(image_cube, weights_cube, update_s2p_config.out.s2p_param_file)
-        update_sofiax_config(s2p_setup.out.ready)
-        get_parameter_files(update_sofiax_config.out.sofiax_config)
-        sofia(get_parameter_files.out.parameter_files.flatten())
-        sofiax(sofia.out.parameter_file.collect())
-        update_gama_validate_config(sofiax.out.ready, cont_file)
+        output_dir = "${params.WORKDIR}/source_finding/${run_name}/sofia"
+
+        run_sofia(
+            image_cube,
+            weights_cube,
+            run_name,
+            output_dir,
+            "${output_dir}/output",
+            ""
+        )
+        run_sofiax(
+            run_name,
+            run_sofia.out.parameter_files,
+            "${output_dir}/sofiax.ini"
+        )
+        update_gama_validate_config(run_sofiax.out.ready, run_name, cont_file, output_dir)
         gama_validate(update_gama_validate_config.out.validate_config)
 
     emit:
         outputs = gama_validate.out.ready
-}
-
-// Source finding run without sofiax
-workflow source_finding_quality_check {
-    take:
-        run_name
-        image_cube
-        weights_cube
-        cont_file
-
-    main:
-        check_dependencies(image_cube, weights_cube, cont_file)
-        update_s2p_config(check_dependencies.out.ready)
-        s2p_setup(image_cube, weights_cube, update_s2p_config.out.s2p_param_file)
-        update_sofiax_config(s2p_setup.out.ready)
-        get_parameter_files(update_sofiax_config.out.sofiax_config)
-        sofia(get_parameter_files.out.parameter_files.flatten())
-    emit:
-        done = sofia.out.parameter_file.collect()
 }
 
 // ----------------------------------------------------------------------------------------
